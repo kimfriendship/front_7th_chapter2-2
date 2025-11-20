@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { NodeType, NodeTypes } from "./constants";
+import { NodeTypes } from "./constants";
 import { Instance } from "./types";
 
 /**
@@ -7,6 +7,11 @@ import { Instance } from "./types";
  * 이벤트 핸들러, 스타일, className 등 다양한 속성을 처리해야 합니다.
  */
 export const setDomProps = (dom: HTMLElement, props: Record<string, any>): void => {
+  // props가 없으면 아무것도 하지 않음
+  if (!props) {
+    return;
+  }
+
   // props 객체의 각 속성을 순회하며 DOM에 설정
   Object.keys(props).forEach((key) => {
     const value = props[key];
@@ -65,19 +70,23 @@ export const updateDomProps = (
   prevProps: Record<string, any> = {},
   nextProps: Record<string, any> = {},
 ): void => {
+  // props가 없으면 빈 객체로 처리
+  const prev = prevProps || {};
+  const next = nextProps || {};
+
   // 1. 이전 속성 중 새 속성에 없는 것들을 제거
-  Object.keys(prevProps).forEach((key) => {
+  Object.keys(prev).forEach((key) => {
     // children은 건너뜀
     if (key === "children") {
       return;
     }
 
     // 새 속성에 없는 경우만 제거
-    if (!(key in nextProps)) {
+    if (!(key in next)) {
       // 이벤트 핸들러 제거
-      if (key.startsWith("on") && typeof prevProps[key] === "function") {
+      if (key.startsWith("on") && typeof prev[key] === "function") {
         const eventName = key.substring(2).toLowerCase();
-        dom.removeEventListener(eventName, prevProps[key]);
+        dom.removeEventListener(eventName, prev[key]);
         return;
       }
 
@@ -99,9 +108,9 @@ export const updateDomProps = (
   });
 
   // 2. 새 속성을 설정 (변경되거나 추가된 것들)
-  Object.keys(nextProps).forEach((key) => {
-    const prevValue = prevProps[key];
-    const nextValue = nextProps[key];
+  Object.keys(next).forEach((key) => {
+    const prevValue = prev[key];
+    const nextValue = next[key];
 
     // children은 건너뜀
     if (key === "children") {
@@ -117,31 +126,31 @@ export const updateDomProps = (
     // nextValue가 함수가 아니어도 (null/undefined) 이전 핸들러를 제거해야 함
     if (key.startsWith("on")) {
       const eventName = key.substring(2).toLowerCase();
-      
+
       // 이전 핸들러가 함수였다면 제거
       if (typeof prevValue === "function") {
         dom.removeEventListener(eventName, prevValue);
       }
-      
+
       // 새 핸들러가 함수면 추가
       if (typeof nextValue === "function") {
         dom.addEventListener(eventName, nextValue);
       }
-      
+
       return;
     }
 
     // style 속성 업데이트
     if (key === "style" && typeof nextValue === "object" && nextValue !== null) {
       const prevStyle = typeof prevValue === "object" && prevValue !== null ? prevValue : {};
-      
+
       // 이전 스타일 중 새 스타일에 없는 것 제거
       Object.keys(prevStyle).forEach((styleKey) => {
         if (!(styleKey in nextValue)) {
           (dom.style as any)[styleKey] = "";
         }
       });
-      
+
       // 새 스타일 적용
       Object.keys(nextValue).forEach((styleKey) => {
         (dom.style as any)[styleKey] = nextValue[styleKey];
