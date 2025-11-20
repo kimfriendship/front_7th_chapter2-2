@@ -82,7 +82,6 @@ export const useState = <T>(initialValue: T | (() => T)): [T, (nextValue: T | ((
 
     // 값이 다르면 상태를 업데이트하고 재렌더링을 예약합니다
     stateArray[currentCursor] = newState;
-
     // 렌더링 스케줄링 (순환 import 방지를 위해 context를 통해 접근)
     if (context.scheduleRender) {
       context.scheduleRender();

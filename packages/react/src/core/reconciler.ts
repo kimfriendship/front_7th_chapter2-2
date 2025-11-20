@@ -167,9 +167,19 @@ const reconcileChildren = (parentDom: HTMLElement, instance: Instance, children:
 
     // 컴포넌트의 결과를 자식으로 재조정
     const childPath = createChildPath(parentPath, null, 0, componentNode?.type, [componentNode!]);
-    const childInstance = reconcile(parentDom, oldChildren[0] ?? null, componentNode, childPath);
+    const oldChild = oldChildren[0] ?? null;
+    const childInstance = reconcile(parentDom, oldChild, componentNode, childPath);
 
-    newChildren.push(childInstance);
+    if (childInstance) {
+      newChildren.push(childInstance);
+
+      // 컴포넌트의 자식이 변경되었을 때 DOM 삽입
+      // 1. oldChild가 없음 (새로 추가)
+      // 2. childInstance !== oldChild (mount로 새 인스턴스 생성)
+      if (!oldChild || childInstance !== oldChild) {
+        insertInstance(parentDom, childInstance);
+      }
+    }
 
     // 컴포넌트 스택에서 제거
     context.hooks.componentStack.pop();

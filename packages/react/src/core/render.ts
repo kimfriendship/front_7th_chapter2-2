@@ -22,10 +22,10 @@ export const render = (): void => {
   // 2. reconcile 함수를 호출하여 루트 노드를 재조정
   // 이전 인스턴스와 새 VNode를 비교하여 DOM을 업데이트
   context.root.instance = reconcile(
-    context.root.container,      // 부모 DOM 컨테이너
-    context.root.instance,        // 이전 인스턴스 (null이면 초기 렌더링)
-    context.root.node,            // 새로운 VNode
-    "0",                          // 루트 경로
+    context.root.container, // 부모 DOM 컨테이너
+    context.root.instance, // 이전 인스턴스 (null이면 초기 렌더링)
+    context.root.node, // 새로운 VNode
+    "0", // 루트 경로
   );
 
   // 루트 인스턴스의 첫 번째 실제 DOM 노드가 아직 삽입되지 않았으면 삽입
