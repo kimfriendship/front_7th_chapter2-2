@@ -1,5 +1,5 @@
 import { context } from "./context";
-import { getDomNodes, insertInstance } from "./dom";
+import { getFirstDom, insertInstance } from "./dom";
 import { reconcile } from "./reconciler";
 import { cleanupUnusedHooks } from "./hooks";
 import { withEnqueue } from "../utils";
@@ -27,10 +27,13 @@ export const render = (): void => {
     "0",                          // 루트 경로
   );
 
-  // 루트 인스턴스가 생성되지 않았으면 (reconcile이 null 반환) 처리
-  // 초기 렌더링에서는 DOM에 삽입해야 함
-  if (context.root.instance && !context.root.instance.dom?.parentNode) {
-    insertInstance(context.root.container, context.root.instance);
+  // 루트 인스턴스의 첫 번째 실제 DOM 노드가 아직 삽입되지 않았으면 삽입
+  // COMPONENT나 FRAGMENT는 dom이 null이므로 getFirstDom()으로 실제 DOM 확인
+  if (context.root.instance) {
+    const firstDom = getFirstDom(context.root.instance);
+    if (firstDom && !firstDom.parentNode) {
+      insertInstance(context.root.container, context.root.instance);
+    }
   }
 
   // 3. 사용되지 않은 훅들을 정리

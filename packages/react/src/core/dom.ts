@@ -114,14 +114,20 @@ export const updateDomProps = (
     }
 
     // 이벤트 핸들러 업데이트
-    if (key.startsWith("on") && typeof nextValue === "function") {
+    // nextValue가 함수가 아니어도 (null/undefined) 이전 핸들러를 제거해야 함
+    if (key.startsWith("on")) {
       const eventName = key.substring(2).toLowerCase();
-      // 이전 핸들러 제거
+      
+      // 이전 핸들러가 함수였다면 제거
       if (typeof prevValue === "function") {
         dom.removeEventListener(eventName, prevValue);
       }
-      // 새 핸들러 추가
-      dom.addEventListener(eventName, nextValue);
+      
+      // 새 핸들러가 함수면 추가
+      if (typeof nextValue === "function") {
+        dom.addEventListener(eventName, nextValue);
+      }
+      
       return;
     }
 
