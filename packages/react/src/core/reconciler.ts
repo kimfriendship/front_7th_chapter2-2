@@ -56,7 +56,7 @@ const mount = (parentDom: HTMLElement, node: VNode, path: string): Instance => {
   // TEXT_ELEMENT: 텍스트 노드
   if (type === TEXT_ELEMENT) {
     kind = NodeTypes.TEXT;
-    dom = document.createTextNode(props.nodeValue ?? "");
+    dom = document.createTextNode(props?.nodeValue ?? "");
   }
   // Fragment: 여러 자식을 그룹화하는 가상 노드
   else if (type === Fragment) {
@@ -87,7 +87,8 @@ const mount = (parentDom: HTMLElement, node: VNode, path: string): Instance => {
   };
 
   // 자식들을 재조정
-  reconcileChildren(parentDom, instance, props.children ?? [], path);
+  // props가 없을 수 있으므로 옵셔널 체이닝 사용
+  reconcileChildren(parentDom, instance, props?.children ?? [], path);
 
   return instance;
 };
@@ -108,7 +109,7 @@ const update = (parentDom: HTMLElement, instance: Instance, node: VNode, path: s
   // TEXT 타입: 텍스트 내용 업데이트
   if (instance.kind === NodeTypes.TEXT && instance.dom) {
     const textNode = instance.dom as Text;
-    const newNodeValue = props.nodeValue ?? "";
+    const newNodeValue = props?.nodeValue ?? "";
     if (textNode.nodeValue !== newNodeValue) {
       textNode.nodeValue = newNodeValue;
     }
@@ -121,7 +122,8 @@ const update = (parentDom: HTMLElement, instance: Instance, node: VNode, path: s
   }
 
   // 자식들을 재조정
-  reconcileChildren(parentDom, instance, props.children ?? [], path);
+  // props가 없을 수 있으므로 옵셔널 체이닝 사용
+  reconcileChildren(parentDom, instance, props?.children ?? [], path);
 
   return instance;
 };
@@ -160,7 +162,8 @@ const reconcileChildren = (parentDom: HTMLElement, instance: Instance, children:
     context.hooks.cursor.set(parentPath, 0);
 
     // 컴포넌트 함수 실행하여 실제 렌더링할 VNode 얻기
-    const componentNode = (instance.node.type as React.ComponentType)(instance.node.props);
+    // props가 없을 수 있으므로 빈 객체를 기본값으로 사용
+    const componentNode = (instance.node.type as React.ComponentType)(instance.node.props || {});
 
     // 컴포넌트의 결과를 자식으로 재조정
     const childPath = createChildPath(parentPath, null, 0, componentNode?.type, [componentNode!]);
