@@ -2,7 +2,8 @@ import { context } from "./context";
 import { getFirstDom, insertInstance } from "./dom";
 import { reconcile } from "./reconciler";
 import { cleanupUnusedHooks } from "./hooks";
-import { withEnqueue } from "../utils";
+import { enqueue, withEnqueue } from "../utils";
+import type { EffectHook } from "./types";
 
 /**
  * 루트 컴포넌트의 렌더링을 수행하는 함수입니다.
@@ -39,6 +40,41 @@ export const render = (): void => {
   // 3. 사용되지 않은 훅들을 정리
   // visited에 포함되지 않은 경로의 훅들은 더 이상 사용되지 않으므로 정리
   cleanupUnusedHooks();
+
+  // 4. 이펙트 실행을 예약합니다 (렌더링 후 비동기로 실행)
+  // DOM 업데이트가 완전히 끝난 후 이펙트가 실행되도록 마이크로태스크 큐에 추가
+  const effectsToRun = [...context.effects.queue];
+  context.effects.queue = [];
+
+  if (effectsToRun.length > 0) {
+    enqueue(() => {
+      for (const { path, cursor } of effectsToRun) {
+        // 해당 경로의 훅 배열 가져오기
+        const hooks = context.hooks.state.get(path);
+        if (!hooks || cursor >= hooks.length) {
+          continue;
+        }
+
+        // 이펙트 훅 가져오기
+        const effectHook = hooks[cursor] as EffectHook;
+        if (!effectHook || effectHook.kind !== "effect") {
+          continue;
+        }
+
+        // 이전 클린업 함수가 있으면 먼저 실행
+        if (effectHook.cleanup) {
+          effectHook.cleanup();
+          effectHook.cleanup = null;
+        }
+
+        // 이펙트 함수 실행하고 새 클린업 함수 저장
+        const cleanup = effectHook.effect();
+        if (cleanup) {
+          effectHook.cleanup = cleanup;
+        }
+      }
+    });
+  }
 };
 
 /**
