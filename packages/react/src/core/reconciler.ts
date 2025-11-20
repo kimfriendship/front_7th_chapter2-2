@@ -1,14 +1,7 @@
 import { context } from "./context";
 import { Fragment, NodeTypes, TEXT_ELEMENT } from "./constants";
 import { Instance, VNode } from "./types";
-import {
-  getFirstDom,
-  getFirstDomFromChildren,
-  insertInstance,
-  removeInstance,
-  setDomProps,
-  updateDomProps,
-} from "./dom";
+import { getFirstDomFromChildren, insertInstance, removeInstance, setDomProps, updateDomProps } from "./dom";
 import { createChildPath } from "./elements";
 import { isEmptyValue } from "../utils";
 
@@ -102,13 +95,8 @@ const mount = (parentDom: HTMLElement, node: VNode, path: string): Instance => {
 /**
  * 기존 인스턴스를 새로운 VNode로 업데이트합니다.
  */
-const update = (
-  parentDom: HTMLElement,
-  instance: Instance,
-  node: VNode,
-  path: string,
-): Instance => {
-  const { type, props } = node;
+const update = (parentDom: HTMLElement, instance: Instance, node: VNode, path: string): Instance => {
+  const { props } = node;
 
   // 이전 props를 먼저 저장 (instance.node를 업데이트하기 전에)
   const prevProps = instance.node.props;
@@ -116,6 +104,15 @@ const update = (
   // 노드 정보 업데이트
   instance.node = node;
   instance.path = path;
+
+  // TEXT 타입: 텍스트 내용 업데이트
+  if (instance.kind === NodeTypes.TEXT && instance.dom) {
+    const textNode = instance.dom as Text;
+    const newNodeValue = props.nodeValue ?? "";
+    if (textNode.nodeValue !== newNodeValue) {
+      textNode.nodeValue = newNodeValue;
+    }
+  }
 
   // HOST 타입 (일반 DOM 요소): 속성 업데이트
   if (instance.kind === NodeTypes.HOST && instance.dom) {
@@ -149,12 +146,7 @@ const unmount = (instance: Instance): void => {
 /**
  * 자식 노드들을 재조정합니다.
  */
-const reconcileChildren = (
-  parentDom: HTMLElement,
-  instance: Instance,
-  children: VNode[],
-  parentPath: string,
-): void => {
+const reconcileChildren = (parentDom: HTMLElement, instance: Instance, children: VNode[], parentPath: string): void => {
   const oldChildren = instance.children;
   const newChildren: (Instance | null)[] = [];
 
@@ -162,28 +154,23 @@ const reconcileChildren = (
   if (instance.kind === NodeTypes.COMPONENT) {
     context.hooks.componentStack.push(parentPath);
     context.hooks.visited.add(parentPath);
-    
+
     // 커서를 먼저 리셋 (컴포넌트 함수 실행 전에!)
     // 컴포넌트 함수 실행 중 훅들이 이 커서를 사용하므로 반드시 먼저 초기화해야 함
     context.hooks.cursor.set(parentPath, 0);
-    
+
     // 컴포넌트 함수 실행하여 실제 렌더링할 VNode 얻기
     const componentNode = (instance.node.type as React.ComponentType)(instance.node.props);
-    
+
     // 컴포넌트의 결과를 자식으로 재조정
     const childPath = createChildPath(parentPath, null, 0, componentNode?.type, [componentNode!]);
-    const childInstance = reconcile(
-      parentDom,
-      oldChildren[0] ?? null,
-      componentNode,
-      childPath,
-    );
-    
+    const childInstance = reconcile(parentDom, oldChildren[0] ?? null, componentNode, childPath);
+
     newChildren.push(childInstance);
-    
+
     // 컴포넌트 스택에서 제거
     context.hooks.componentStack.pop();
-    
+
     instance.children = newChildren;
     return;
   }
@@ -192,9 +179,9 @@ const reconcileChildren = (
   const parentDomForChildren = instance.kind === NodeTypes.HOST ? (instance.dom as HTMLElement) : parentDom;
 
   // key가 있는 자식들을 맵으로 관리 (효율적인 재사용을 위해)
-  const oldChildrenByKey = new Map<string, Instance>();
+  const oldChildrenByKey = new Map<string | number, Instance>();
   for (const oldChild of oldChildren) {
-    if (oldChild?.key) {
+    if (oldChild?.key !== null) {
       oldChildrenByKey.set(oldChild.key, oldChild);
     }
   }
@@ -232,13 +219,16 @@ const reconcileChildren = (
 
     // 재조정
     const newChild = reconcile(parentDomForChildren, oldChild, child, childPath);
-    
+
     if (newChild) {
       newChildren.push(newChild);
 
-      // DOM 위치 조정 (key 기반 재배치)
-      // 새로 마운트되었거나 위치가 변경된 경우 DOM에 삽입
-      if (!oldChild || oldChild !== newChild) {
+      // DOM 위치 조정 (key 기반 재배치 및 마운트)
+      // 다음 경우에 DOM에 삽입:
+      // 1. oldChild가 없음 (새로 추가)
+      // 2. newChild !== oldChild (mount로 새 인스턴스 생성)
+      // 3. oldChild !== oldChildren[i] (key 기반 재배치로 위치 변경)
+      if (!oldChild || newChild !== oldChild || oldChild !== oldChildren[i]) {
         // anchor: 아직 처리되지 않은 다음 형제 중 첫 번째 DOM 노드
         // oldChildren의 i+1 이후 자식들 중에서 첫 번째 DOM 노드를 찾음
         const anchor = getFirstDomFromChildren(oldChildren.slice(i + 1));

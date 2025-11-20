@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { isEmptyValue } from "../utils";
 import { VNode } from "./types";
-import { Fragment, TEXT_ELEMENT } from "./constants";
+import { TEXT_ELEMENT } from "./constants";
 
 /**
  * 주어진 노드를 VNode 형식으로 정규화합니다.
@@ -63,20 +63,21 @@ export const createElement = (
   // 자식 배열을 평탄화하고 정규화
   // rawChildren은 중첩된 배열일 수 있으므로 flat(Infinity)로 완전히 평탄화
   const flatChildren = rawChildren.flat(Infinity);
-  
+
   // 각 자식을 normalizeNode로 정규화하고 null이 아닌 것만 필터링
-  const children = flatChildren
-    .map((child) => normalizeNode(child))
-    .filter((child) => child !== null);
+  const children = flatChildren.map((child) => normalizeNode(child)).filter((child) => child !== null);
 
   // VNode 객체 반환
+  // key를 원본 타입 그대로 유지 (숫자, 문자열 등)
+  const normalizedKey = key === null || key === undefined ? null : key;
+
+  // children이 있을 때만 props에 추가
+  const nodeProps = children.length > 0 ? { ...props, children } : { ...props };
+
   return {
     type,
-    key: key === null || key === undefined ? null : String(key), // key를 문자열로 변환
-    props: {
-      ...props,
-      children, // 정규화된 자식 배열
-    },
+    key: normalizedKey,
+    props: nodeProps,
   };
 };
 
@@ -86,14 +87,15 @@ export const createElement = (
  */
 export const createChildPath = (
   parentPath: string,
-  key: string | null,
+  key: string | number | null,
   index: number,
   nodeType?: string | symbol | React.ComponentType,
   siblings?: VNode[],
 ): string => {
   // key가 있는 경우: "parentPath.k{key}" 형식 사용
+  // key를 문자열로 변환하여 경로에 사용
   if (key !== null) {
-    return `${parentPath}.k${key}`;
+    return `${parentPath}.k${String(key)}`;
   }
 
   // key가 없는 경우: 타입 기반 카운터 사용
@@ -106,7 +108,7 @@ export const createChildPath = (
         typeIndex++;
       }
     }
-    
+
     // 타입명 추출 (함수면 이름, 심볼이면 설명, 문자열이면 그대로)
     let typeName: string;
     if (typeof nodeType === "function") {
@@ -116,7 +118,7 @@ export const createChildPath = (
     } else {
       typeName = String(nodeType);
     }
-    
+
     // "parentPath.c{TypeName}_{typeIndex}" 형식 사용
     return `${parentPath}.c${typeName}_${typeIndex}`;
   }

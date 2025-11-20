@@ -2,7 +2,7 @@ import { context } from "./context";
 import { VNode } from "./types";
 import { removeInstance } from "./dom";
 import { cleanupUnusedHooks } from "./hooks";
-import { render } from "./render";
+import { render, enqueueRender } from "./render";
 
 /**
  * Mini-React 애플리케이션의 루트를 설정하고 첫 렌더링을 시작합니다.
@@ -38,9 +38,12 @@ export const setup = (rootNode: VNode | null, container: HTMLElement): void => {
   // 5. 훅 컨텍스트를 초기화합니다
   context.hooks.clear();
 
-  // 6. 미사용 훅을 정리합니다 (초기 렌더링이므로 모든 기존 훅 정리)
+  // 6. 렌더링 스케줄러를 설정합니다 (순환 import 방지)
+  context.scheduleRender = enqueueRender;
+
+  // 7. 미사용 훅을 정리합니다 (초기 렌더링이므로 모든 기존 훅 정리)
   cleanupUnusedHooks();
 
-  // 7. 첫 렌더링을 실행합니다
+  // 8. 첫 렌더링을 실행합니다
   render();
 };

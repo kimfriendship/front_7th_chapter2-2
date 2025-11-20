@@ -90,4 +90,10 @@ export const context: Context = {
   effects: {
     queue: [],
   },
+
+  /**
+   * 렌더링 스케줄러 함수입니다.
+   * setup()에서 초기화됩니다.
+   */
+  scheduleRender: null,
 };
